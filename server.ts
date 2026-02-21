@@ -9,7 +9,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("estoque_v3.db");
+const dbPath = process.env.NODE_ENV === "production" ? "/tmp/estoque_v3.db" : "estoque_v3.db";
+const db = new Database(dbPath);
 
 // Initialize Database
 db.exec(`
