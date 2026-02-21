@@ -1,11 +1,23 @@
 import { supabase, handleOptions } from './_supabase';
 
-// Convert empty strings to null for fields with UNIQUE constraints
+const PRODUCT_COLUMNS = [
+    'type', 'brand', 'model', 'year_range', 'engine', 'internal_code', 'manufacturer_code',
+    'measurements', 'condition', 'status', 'quantity', 'min_quantity', 'location', 'notes',
+    'photo_url', 'acquisition_cost', 'trade_in_value', 'logistics_cost', 'rectification_cost',
+    'total_cost', 'sale_price', 'min_price', 'markup', 'suggested_price', 'warranty_days'
+];
+
 function sanitizeProduct(body: any) {
-    const NULLABLE_UNIQUE = ['internal_code', 'manufacturer_code'];
-    const out = { ...body };
-    for (const key of NULLABLE_UNIQUE) {
-        if (out[key] === '' || out[key] === undefined) out[key] = null;
+    const out: any = {};
+    for (const key of PRODUCT_COLUMNS) {
+        if (body[key] !== undefined) {
+            // Convert empty strings to null for UNIQUE nullable columns
+            if ((key === 'internal_code' || key === 'manufacturer_code') && body[key] === '') {
+                out[key] = null;
+            } else {
+                out[key] = body[key];
+            }
+        }
     }
     return out;
 }
