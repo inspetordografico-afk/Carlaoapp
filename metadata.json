@@ -1,0 +1,7 @@
+{
+  "name": "Carlão Autopeças - Gestão de Estoque",
+  "description": "Sistema profissional de controle de estoque para autopeças, especializado em cabeçotes e virabrequins.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
