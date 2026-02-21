@@ -2,17 +2,64 @@
     "version": 2,
     "rewrites": [
         {
-            "source": "/api/(.*)",
-            "destination": "/api/index.ts"
+            "source": "/api/products/:id",
+            "destination": "/api/products?id=:id"
+        },
+        {
+            "source": "/api/products",
+            "destination": "/api/products"
+        },
+        {
+            "source": "/api/sales",
+            "destination": "/api/sales"
+        },
+        {
+            "source": "/api/dashboard",
+            "destination": "/api/dashboard"
+        },
+        {
+            "source": "/api/customers/:id",
+            "destination": "/api/customers?id=:id"
+        },
+        {
+            "source": "/api/customers",
+            "destination": "/api/customers"
+        },
+        {
+            "source": "/api/finance/transactions",
+            "destination": "/api/finance"
+        },
+        {
+            "source": "/api/reports/stock",
+            "destination": "/api/stock"
+        },
+        {
+            "source": "/api/movements",
+            "destination": "/api/movements"
+        },
+        {
+            "source": "/api/user_preferences/:userId/:module",
+            "destination": "/api/preferences?userId=:userId&module=:module"
+        },
+        {
+            "source": "/api/user_preferences",
+            "destination": "/api/preferences"
+        },
+        {
+            "source": "/api/marketing/stats",
+            "destination": "/api/marketing"
+        },
+        {
+            "source": "/api/health",
+            "destination": "/api/health"
+        },
+        {
+            "source": "/api/auth/login",
+            "destination": "/api/login"
         },
         {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
         }
-    ],
-    "build": {
-        "env": {
-            "NODE_ENV": "production"
-        }
-    }
+    ]
 }
