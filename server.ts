@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
 import bcrypt from "bcrypt";
@@ -286,6 +285,7 @@ export default app;
 if (process.env.NODE_ENV !== "production") {
   (async () => {
     await seedUsers();
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
     app.listen(PORT, "0.0.0.0", () => console.log(`Local Dev Server running on http://localhost:${PORT}`));
