@@ -1,7 +1,7 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import path from "path";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { fileURLToPath } from "url";
 
