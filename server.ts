@@ -9,192 +9,200 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = process.env.NODE_ENV === "production" ? "/tmp/estoque_v3.db" : "estoque_v3.db";
-const db = new Database(dbPath);
+let db: any;
+let dbInitError: string = "";
 
-// Initialize Database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    role TEXT NOT NULL,
-    password TEXT NOT NULL
-  );
+try {
+  const dbPath = process.env.NODE_ENV === "production" ? "/tmp/estoque_v3.db" : "estoque_v3.db";
+  db = new Database(dbPath);
 
-  CREATE TABLE IF NOT EXISTS suppliers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    contact TEXT,
-    category TEXT
-  );
+  // Initialize Database
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      password TEXT NOT NULL
+    );
 
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT NOT NULL,
-    brand TEXT NOT NULL,
-    model TEXT NOT NULL,
-    year_range TEXT,
-    engine TEXT NOT NULL,
-    internal_code TEXT UNIQUE,
-    manufacturer_code TEXT,
-    measurements TEXT,
-    condition TEXT NOT NULL, -- 'Nova', 'Usada', 'Retificada'
-    status TEXT DEFAULT 'AVAILABLE', -- 'AVAILABLE', 'RESERVED', 'IN_RECTIFICATION', 'CONSIGNED', 'TRADE_IN_PROCESS'
-    
-    -- Cost Data
-    acquisition_cost REAL DEFAULT 0,
-    trade_in_value REAL DEFAULT 0,
-    logistics_cost REAL DEFAULT 0,
-    rectification_cost REAL DEFAULT 0,
-    total_cost REAL DEFAULT 0, -- Calculated: acq + trade + log + rect
-    
-    -- Price Data
-    sale_price REAL DEFAULT 0,
-    min_price REAL DEFAULT 0,
-    markup REAL DEFAULT 0,
-    suggested_price REAL DEFAULT 0,
-    
-    quantity INTEGER DEFAULT 0,
-    min_quantity INTEGER DEFAULT 2,
-    location TEXT,
-    supplier_id INTEGER,
-    notes TEXT,
-    photo_url TEXT,
-    warranty_days INTEGER DEFAULT 90,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-  );
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      contact TEXT,
+      category TEXT
+    );
 
-  CREATE TABLE IF NOT EXISTS sales (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    customer_name TEXT,
-    customer_document TEXT, -- CPF/CNPJ for NF-e
-    total_value REAL NOT NULL,
-    total_cost REAL NOT NULL,
-    margin REAL NOT NULL,
-    origin TEXT DEFAULT 'DIRECT',
-    fiscal_status TEXT DEFAULT 'PENDING', -- 'PENDING', 'ISSUED', 'ERROR'
-    nfe_key TEXT,
-    warranty_until DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      brand TEXT NOT NULL,
+      model TEXT NOT NULL,
+      year_range TEXT,
+      engine TEXT NOT NULL,
+      internal_code TEXT UNIQUE,
+      manufacturer_code TEXT,
+      measurements TEXT,
+      condition TEXT NOT NULL, -- 'Nova', 'Usada', 'Retificada'
+      status TEXT DEFAULT 'AVAILABLE', -- 'AVAILABLE', 'RESERVED', 'IN_RECTIFICATION', 'CONSIGNED', 'TRADE_IN_PROCESS'
+      
+      -- Cost Data
+      acquisition_cost REAL DEFAULT 0,
+      trade_in_value REAL DEFAULT 0,
+      logistics_cost REAL DEFAULT 0,
+      rectification_cost REAL DEFAULT 0,
+      total_cost REAL DEFAULT 0, -- Calculated: acq + trade + log + rect
+      
+      -- Price Data
+      sale_price REAL DEFAULT 0,
+      min_price REAL DEFAULT 0,
+      markup REAL DEFAULT 0,
+      suggested_price REAL DEFAULT 0,
+      
+      quantity INTEGER DEFAULT 0,
+      min_quantity INTEGER DEFAULT 2,
+      location TEXT,
+      supplier_id INTEGER,
+      notes TEXT,
+      photo_url TEXT,
+      warranty_days INTEGER DEFAULT 90,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    );
 
-  CREATE TABLE IF NOT EXISTS sale_returns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sale_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    reason TEXT NOT NULL,
-    technical_report TEXT,
-    refund_amount REAL DEFAULT 0,
-    status TEXT DEFAULT 'OPEN', -- 'OPEN', 'RESOLVED', 'REJECTED'
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sale_id) REFERENCES sales(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
+    CREATE TABLE IF NOT EXISTS sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      customer_name TEXT,
+      customer_document TEXT, -- CPF/CNPJ for NF-e
+      total_value REAL NOT NULL,
+      total_cost REAL NOT NULL,
+      margin REAL NOT NULL,
+      origin TEXT DEFAULT 'DIRECT',
+      fiscal_status TEXT DEFAULT 'PENDING', -- 'PENDING', 'ISSUED', 'ERROR'
+      nfe_key TEXT,
+      warranty_until DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-  CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    action TEXT NOT NULL,
-    entity_type TEXT NOT NULL,
-    entity_id INTEGER,
-    old_value TEXT,
-    new_value TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    CREATE TABLE IF NOT EXISTS sale_returns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sale_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      technical_report TEXT,
+      refund_amount REAL DEFAULT 0,
+      status TEXT DEFAULT 'OPEN', -- 'OPEN', 'RESOLVED', 'REJECTED'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sale_id) REFERENCES sales(id),
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
 
-  CREATE TABLE IF NOT EXISTS trade_ins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sale_id INTEGER, -- Optional, if part of a sale
-    description TEXT NOT NULL,
-    estimated_value REAL NOT NULL,
-    condition TEXT NOT NULL,
-    status TEXT DEFAULT 'RECEIVED', -- 'RECEIVED', 'SENT_TO_RECTIFICATION', 'READY_FOR_STOCK'
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER,
+      old_value TEXT,
+      new_value TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-  CREATE TABLE IF NOT EXISTS sale_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sale_id INTEGER NOT NULL,
-    product_id INTEGER,
-    service_name TEXT,
-    quantity INTEGER,
-    unit_price REAL NOT NULL,
-    unit_cost REAL NOT NULL,
-    type TEXT NOT NULL, -- 'PRODUCT', 'SERVICE'
-    FOREIGN KEY (sale_id) REFERENCES sales(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
+    CREATE TABLE IF NOT EXISTS trade_ins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sale_id INTEGER, -- Optional, if part of a sale
+      description TEXT NOT NULL,
+      estimated_value REAL NOT NULL,
+      condition TEXT NOT NULL,
+      status TEXT DEFAULT 'RECEIVED', -- 'RECEIVED', 'SENT_TO_RECTIFICATION', 'READY_FOR_STOCK'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-  CREATE TABLE IF NOT EXISTS financial_transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT NOT NULL, -- 'INCOME', 'EXPENSE'
-    category TEXT NOT NULL, -- 'SALE', 'PURCHASE', 'RENT', 'SALARY', 'MARKETING', 'OTHER'
-    amount REAL NOT NULL,
-    description TEXT,
-    sale_id INTEGER,
-    due_date DATETIME,
-    status TEXT DEFAULT 'PAID', -- 'PAID', 'PENDING'
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sale_id) REFERENCES sales(id)
-  );
+    CREATE TABLE IF NOT EXISTS sale_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sale_id INTEGER NOT NULL,
+      product_id INTEGER,
+      service_name TEXT,
+      quantity INTEGER,
+      unit_price REAL NOT NULL,
+      unit_cost REAL NOT NULL,
+      type TEXT NOT NULL, -- 'PRODUCT', 'SERVICE'
+      FOREIGN KEY (sale_id) REFERENCES sales(id),
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
 
-  CREATE TABLE IF NOT EXISTS marketing_campaigns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    platform TEXT NOT NULL, -- 'GOOGLE', 'META'
-    name TEXT NOT NULL,
-    cost REAL NOT NULL,
-    clicks INTEGER,
-    conversions INTEGER,
-    start_date DATETIME,
-    end_date DATETIME
-  );
+    CREATE TABLE IF NOT EXISTS financial_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL, -- 'INCOME', 'EXPENSE'
+      category TEXT NOT NULL, -- 'SALE', 'PURCHASE', 'RENT', 'SALARY', 'MARKETING', 'OTHER'
+      amount REAL NOT NULL,
+      description TEXT,
+      sale_id INTEGER,
+      due_date DATETIME,
+      status TEXT DEFAULT 'PAID', -- 'PAID', 'PENDING'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sale_id) REFERENCES sales(id)
+    );
 
-  CREATE TABLE IF NOT EXISTS movements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    type TEXT NOT NULL, -- 'IN', 'OUT', 'ADJUST'
-    quantity INTEGER NOT NULL,
-    user_id INTEGER,
-    reason TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
+    CREATE TABLE IF NOT EXISTS marketing_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL, -- 'GOOGLE', 'META'
+      name TEXT NOT NULL,
+      cost REAL NOT NULL,
+      clicks INTEGER,
+      conversions INTEGER,
+      start_date DATETIME,
+      end_date DATETIME
+    );
 
-  CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    document TEXT,
-    phone TEXT,
-    email TEXT,
-    city TEXT,
-    type TEXT DEFAULT 'PF', -- 'PF', 'OFICINA', 'REVENDA', 'FROTA'
-    preferences TEXT, -- JSON fields e.g. preferred engines
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    CREATE TABLE IF NOT EXISTS movements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      type TEXT NOT NULL, -- 'IN', 'OUT', 'ADJUST'
+      quantity INTEGER NOT NULL,
+      user_id INTEGER,
+      reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id)
+    );
 
-  CREATE TABLE IF NOT EXISTS user_preferences (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    module TEXT NOT NULL, -- 'UI_LAYOUT'
-    config TEXT NOT NULL, -- JSON string of active fields
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, module),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-`);
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      document TEXT,
+      phone TEXT,
+      email TEXT,
+      city TEXT,
+      type TEXT DEFAULT 'PF', -- 'PF', 'OFICINA', 'REVENDA', 'FROTA'
+      preferences TEXT, -- JSON fields e.g. preferred engines
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 
-// Seed initial user if not exists
-const userCount = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
-if (userCount.count === 0) {
-  const adminHash = bcrypt.hashSync("admin123", 10);
-  const employeeHash = bcrypt.hashSync("123456", 10);
-  db.prepare("INSERT INTO users (name, role, password) VALUES (?, ?, ?)").run("Carlão", "OWNER", adminHash);
-  db.prepare("INSERT INTO users (name, role, password) VALUES (?, ?, ?)").run("Funcionario", "EMPLOYEE", employeeHash);
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      module TEXT NOT NULL, -- 'UI_LAYOUT'
+      config TEXT NOT NULL, -- JSON string of active fields
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, module),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+  `);
+
+  // Seed initial user if not exists
+  const userCount = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
+  if (userCount.count === 0) {
+    const adminHash = bcrypt.hashSync("admin123", 10);
+    const employeeHash = bcrypt.hashSync("123456", 10);
+    db.prepare("INSERT INTO users (name, role, password) VALUES (?, ?, ?)").run("Carlão", "OWNER", adminHash);
+    db.prepare("INSERT INTO users (name, role, password) VALUES (?, ?, ?)").run("Funcionario", "EMPLOYEE", employeeHash);
+  }
+} catch (error: any) {
+  console.error("Database initialization failed:", error);
+  dbInitError = error.message || String(error);
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'carlao_erp_super_secret_key_2026';
@@ -208,6 +216,9 @@ app.use(express.json({ limit: '10mb' }));
 app.post("/api/auth/login", (req, res) => {
   const { name, password } = req.body;
   try {
+    if (!db) {
+      return res.status(500).json({ error: `Database failed to initialize: ${dbInitError}` });
+    }
     const user = db.prepare("SELECT * FROM users WHERE name = ?").get(name) as any;
     if (!user) {
       return res.status(401).json({ error: "Usuário não encontrado" });
