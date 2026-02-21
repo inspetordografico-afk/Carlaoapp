@@ -66,8 +66,17 @@ app.get("/api/products/:id", async (req, res) => {
   res.json(data);
 });
 
+// Fix empty strings for UNIQUE nullable columns
+function sanitizeProduct(body: any) {
+  const out = { ...body };
+  for (const key of ['internal_code', 'manufacturer_code']) {
+    if (out[key] === '' || out[key] === undefined) out[key] = null;
+  }
+  return out;
+}
+
 app.post("/api/products", async (req, res) => {
-  const body = req.body;
+  const body = sanitizeProduct(req.body);
   const total_cost = (body.acquisition_cost || 0) + (body.trade_in_value || 0) + (body.logistics_cost || 0) + (body.rectification_cost || 0);
   const { data, error } = await supabase.from("products").insert({ ...body, total_cost }).select().single();
   if (error) return res.status(400).json({ error: error.message });
@@ -75,7 +84,7 @@ app.post("/api/products", async (req, res) => {
 });
 
 app.put("/api/products/:id", async (req, res) => {
-  const body = req.body;
+  const body = sanitizeProduct(req.body);
   const total_cost = (body.acquisition_cost || 0) + (body.trade_in_value || 0) + (body.logistics_cost || 0) + (body.rectification_cost || 0);
   const { error } = await supabase.from("products").update({ ...body, total_cost, updated_at: new Date().toISOString() }).eq("id", req.params.id);
   if (error) return res.status(400).json({ error: error.message });
