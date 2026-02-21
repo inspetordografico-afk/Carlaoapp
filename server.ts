@@ -51,23 +51,7 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// --- Auth Middleware ---
-const verifyToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) return res.status(401).json({ error: "Nenhum token fornecido" });
-  const token = authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Token malformado" });
-  jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
-    if (err) return res.status(401).json({ error: "Token inválido ou expirado" });
-    req.user = decoded;
-    next();
-  });
-};
 
-app.use("/api", (req, res, next) => {
-  if (req.path.startsWith("/auth")) return next();
-  verifyToken(req, res, next);
-});
 
 // --- Products API ---
 app.get("/api/products", async (req, res) => {
