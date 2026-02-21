@@ -300,6 +300,68 @@ export default function App() {
               </motion.div>
             )}
 
+            {activeTab === 'inventory' && (
+              <motion.div key="inventory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-black tracking-tight uppercase">Estoque de Peças</h2>
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="px-3 py-1.5 rounded-lg border border-zinc-200 text-sm focus:ring-2 focus:ring-yellow-400 outline-none bg-white">
+                    <option value="">Todos os tipos</option>
+                    <option value="Cabeçote">Cabeçote</option>
+                    <option value="Virabrequim">Virabrequim</option>
+                    <option value="Biela">Biela</option>
+                    <option value="Bronzina">Bronzina</option>
+                    <option value="Comando">Comando</option>
+                    <option value="Junta">Junta</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+                <Card>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-900 text-white text-[10px] uppercase tracking-widest font-bold">
+                          <th className="px-4 py-3">Tipo</th>
+                          <th className="px-4 py-3">Motor</th>
+                          <th className="px-4 py-3">Marca / Modelo</th>
+                          <th className="px-4 py-3">Ano</th>
+                          <th className="px-4 py-3">Estado</th>
+                          <th className="px-4 py-3 text-center">Qtd</th>
+                          <th className="px-4 py-3 text-right">Custo</th>
+                          <th className="px-4 py-3 text-right">Preço Venda</th>
+                          <th className="px-4 py-3 text-center">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {filteredProducts.length === 0 ? (
+                          <tr><td colSpan={9} className="px-4 py-12 text-center text-zinc-400 text-sm">Nenhuma peça encontrada. Use o botão "Nova Peça" para cadastrar.</td></tr>
+                        ) : filteredProducts.map((p) => (
+                          <tr key={p.id} className="hover:bg-zinc-50 transition-colors">
+                            <td className="px-4 py-3"><span className="text-xs font-bold bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded">{p.type}</span></td>
+                            <td className="px-4 py-3 text-sm font-bold">{p.engine || '—'}</td>
+                            <td className="px-4 py-3 text-sm">{p.brand} {p.model}</td>
+                            <td className="px-4 py-3 text-xs text-zinc-500">{p.year_range || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${p.condition === 'Nova' ? 'bg-emerald-100 text-emerald-700' : p.condition === 'Retificada' ? 'bg-blue-100 text-blue-700' : 'bg-zinc-100 text-zinc-600'}`}>
+                                {p.condition || '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`font-black text-sm ${(p.quantity || 0) <= (p.min_quantity || 2) ? 'text-red-600' : 'text-zinc-900'}`}>{p.quantity ?? 0}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-xs text-zinc-500">R$ {(p.total_cost || 0).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right text-sm font-black text-emerald-600">R$ {(p.sale_price || 0).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button onClick={() => openEditModal(p)} className="text-xs font-bold text-yellow-600 hover:underline px-2 py-1 rounded hover:bg-yellow-50">Editar</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
             {activeTab === 'fiscal' && (
               <motion.div key="fiscal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                 <h2 className="text-2xl font-black tracking-tight uppercase">Gestão Fiscal (NF-e)</h2>
